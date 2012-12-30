@@ -1,21 +1,10 @@
-fdupes
-======
-
-fdupes is a program for identifying duplicate files residing within specified directories
-
-This modified version of fdupes includes a patch from:
-
-http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=284274
-
-   * debian/patches/50_bts284274_hardlinkreplace.dpatch
-     - added -L / --linkhard to make fdupes replace files with hardlinks. Also
-       update the manual page; thanks to Rupert Levene for the report and to
-       Javier Fernández-Sanguino Peña for the patch; Closes: #284274
-
+Introduction
+--------------------------------------------------------------------
+FDUPES is a program for identifying duplicate files residing
+within specified directories. 
 
 Usage
-=====
-
+--------------------------------------------------------------------
 Usage: fdupes [options] DIRECTORY...
 
  -r --recurse     	for every directory given follow subdirectories
@@ -59,9 +48,14 @@ once. All files within that directory will be listed as their own
 duplicates, leading to data loss should a user preserve a file 
 without its "duplicate" (the file itself!).
 
-Legal Information
-=================
 
+Contact Information for Adrian Lopez
+--------------------------------------------------------------------
+email: adrian2@caribe.net
+
+
+Legal Information
+--------------------------------------------------------------------
 FDUPES Copyright (c) 1999 Adrian Lopez
 
 Permission is hereby granted, free of charge, to any person

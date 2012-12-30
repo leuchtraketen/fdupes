@@ -1,0 +1,93 @@
+The following list, organized by fdupes version, documents changes
+to fdupes. Every item on the list includes, inside square brackets,
+a list of indentifiers referring to the people who contributed
+that particular item. When more than one person is listed the person
+who contributed the patch or idea appears first, followed by
+those who've otherwise worked on that item. For a list of 
+contributors names and identifiers please see the CONTRIBUTORS file.
+
+
+Changes from 1.40 to 1.50-PR2
+
+- Fixed memory leak. [JB]
+- Added "--summarize" option. [AL]
+- Added "--recurse:" selective recursion option. [AL]
+- Added "--noprompt" option for totally automated deletion of
+  duplicate files.
+- Now sorts duplicates (old to new) for consistent order when
+  listing or deleteing duplicate files.
+- Now tests for early matching of files, which should help speed up
+  the matching process when large files are involved.
+- Added warning whenever a file cannot be deleted. [CHL, AL]
+- Fixed bug where some files would not be closed after failure. [AL]
+- Fixed bug where confirmmatch() function wouldn't always deal
+  properly with zero-length files. [AL]
+- Fixed bug where progress indicator would not be cleared
+  when no files were found. [AL]
+- Removed experimental red-black tree code (it was slower on
+  my system than the default code). [AL]
+- Modified md5/md5.c to avoid compiler warning. [CHL]
+- Changes to fdupes.c for compilation under platforms where
+  getopt_long is unavailable. [LR, AL]
+- Changes to help text for clarity. [AL]
+- Various changes and improvements to Makefile. [PB, AL]
+
+Changes from 1.31 to 1.40
+
+- Added option to omit the first file in each group 
+  of matches. [LM, AL]
+- Added escaping of filenames containing spaces when
+  sameline option is specified. [AL]
+- Changed version indicator format from "fdupes version X.Y"
+  to the simpler "fdupes X.Y". [AL]
+- Changed ordering of options appearing in the help
+  text (--help), manpage, and README file. [AL]
+
+Changes from 1.30 to 1.31
+
+- Added interactive option to preserve all files during
+  delete procedure (something similar was already in 
+  place, but now it's official). [AL]
+- Updated delete procedure prompt format. [AL]
+- Cosmetic code changes. [AL]
+
+Changes from 1.20 to 1.30
+
+- Added size option to display size of duplicates. [LB, AL]
+- Added missing typecast for proper compilation under g++. [LB]
+- Better handling of errors occurring during retrieval
+  of a file's signature. [KK, AL]
+- No longer displays an error message when specified
+  directories contain no files. [AL]
+- Added red-black tree structure (experimental compile-time
+  option, disabled by default). [AL]
+
+Changes from 1.12 to 1.20
+
+- Fixed bug where program would crash when files being
+  scanned were named pipes or sockets. [FD]
+- Fix against security risk resulting from the use of a
+  temporary file to store md5sum output. [FD, AL]
+- Using an external md5sum program is now optional. Started 
+  using L. Peter Deutsh's MD5 library instead. [FD, AL]
+- Added hardlinks option to distinguish between hard links
+  and actual duplicate files. [FD, AL]
+- Added noempty option to exclude zero-length files
+  from consideration [AL]
+
+Changes from 1.11 to 1.12
+
+- Improved handling of extremely long input on preserve 
+  prompt (delete option). [SSD, AL]
+
+Changes from 1.1 to 1.11
+
+- Started checking file sizes before signatures
+  for better performance.  [AB, AL]
+- Added fdupes manpage. [AB, AL]
+
+Changes from 1.0 to 1.1
+
+- Added delete option for semi-automatic deletion
+  of duplicate files. [AL]
+
