@@ -1,0 +1,19 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 30_bts481809_manpage_summarize.dpatch by Sandro Tosi <matrixhasu@gmail.com>
+##
+## DP: BTS #481809: add --summarize to manpage
+
+@DPATCH@
+diff -urNad fdupes~/fdupes.1 fdupes/fdupes.1
+--- fdupes~/fdupes.1	2008-07-03 08:54:35.238410127 +0200
++++ fdupes/fdupes.1	2008-07-03 08:56:38.653443151 +0200
+@@ -44,6 +44,9 @@
+ .B -S --size
+ show size of duplicate files
+ .TP
++.B -m --summarize
++summarize duplicate files information
++.TP
+ .B -q --quiet
+ hide progress indicator
+ .TP

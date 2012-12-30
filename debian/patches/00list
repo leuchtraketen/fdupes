@@ -1,0 +1,10 @@
+01_restore_pristine_code
+05_fix_makefile
+07_fix_manpage
+10_bts353789_manpage_typo
+20_bts447601_lfs_support
+30_bts481809_manpage_summarize
+40_bts511702_nohidden_support
+50_bts284274_hardlinkreplace
+60_bts544568_fix_memleaks
+70_bts537138_disambiguate_recurse

@@ -1,0 +1,49 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 70_bts537138_disambiguate_recurse.dpatch by Sandro Tosi <morph@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Disambiguate the options '--recurse' and '--recurse:'
+
+@DPATCH@
+diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' fdupes~/fdupes.1 fdupes/fdupes.1
+--- fdupes~/fdupes.1	2010-05-28 21:27:56.776898579 +0200
++++ fdupes/fdupes.1	2010-05-28 21:35:33.492898800 +0200
+@@ -23,7 +23,8 @@
+ .TP
+ .B -R --recurse:
+ for each directory given after this option follow subdirectories
+-encountered within
++encountered within (note the ':' at the end of option; see the
++Examples section below for further explanation)
+ .TP
+ .B -s --symlinks
+ follow symlinked directories
+@@ -92,6 +93,15 @@
+ .B --sameline
+ is specified, spaces and backslash characters  (\fB\e\fP) appearing
+ in a filename are preceded by a backslash character.
++
++.SH EXAMPLES
++.TP
++.B fdupes a --recurse: b
++will follow subdirectories under b, but not those under a.
++.TP
++.B fdupes a --recurse b 
++will follow subdirectories under both a and b.
++
+ .SH CAVEATS
+ If fdupes returns with an error message such as
+ .B fdupes: error invoking md5sum
+diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' fdupes~/fdupes.c fdupes/fdupes.c
+--- fdupes~/fdupes.c	2010-05-28 21:27:56.800905326 +0200
++++ fdupes/fdupes.c	2010-05-28 21:37:27.243398155 +0200
+@@ -1037,7 +1037,8 @@
+   printf(" -r --recurse     \tfor every directory given follow subdirectories\n");
+   printf("                  \tencountered within\n");
+   printf(" -R --recurse:    \tfor each directory given after this option follow\n");
+-  printf("                  \tsubdirectories encountered within\n");
++  printf("                  \tsubdirectories encountered within (note the ':' at\n");
++  printf("                  \tthe end of the option, manpage for more details)\n");
+   printf(" -s --symlinks    \tfollow symlinks\n");
+   printf(" -H --hardlinks   \tnormally, when two or more files point to the same\n");
+   printf("                  \tdisk area they are treated as non-duplicates; this\n"); 

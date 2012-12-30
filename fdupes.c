@@ -31,6 +31,7 @@
 #endif
 #include <string.h>
 #include <errno.h>
+#include <libgen.h>
 
 #ifndef EXTERNAL_MD5
 #include "md5/md5.h"
@@ -51,6 +52,9 @@
 #define F_RECURSEAFTER      0x0200
 #define F_NOPROMPT          0x0400
 #define F_SUMMARIZEMATCHES  0x0800
+#define F_EXCLUDEHIDDEN     0x1000
+#define F_HARDLINKFILES     0x2000
+#define F_DEBUGINFO         0x4000
 
 char *program_name;
 
@@ -240,6 +244,7 @@ int grokdir(char *dir, file_t **filelistp)
   struct stat linfo;
   static int progress = 0;
   static char indicator[] = "-\\|/";
+  char *fullname, *name;
 
   cd = opendir(dir);
 
@@ -285,6 +290,17 @@ int grokdir(char *dir, file_t **filelistp)
 	strcat(newfile->d_name, "/");
       strcat(newfile->d_name, dirinfo->d_name);
       
+      if (ISFLAG(flags, F_EXCLUDEHIDDEN)) {
+	fullname = strdup(newfile->d_name);
+	name = basename(fullname);
+	if (name[0] == '.' && strcmp(name, ".") && strcmp(name, "..") ) {
+	  free(newfile->d_name);
+	  free(newfile);
+	  continue;
+	}
+	free(fullname);
+      }
+
       if (filesize(newfile->d_name) == 0 && ISFLAG(flags, F_EXCLUDEEMPTY)) {
 	free(newfile->d_name);
 	free(newfile);
@@ -492,7 +508,10 @@ file_t **checkmatch(filetree_t **root, filetree_t *checktree, file_t *file)
   else {
     if (checktree->file->crcpartial == NULL) {
       crcsignature = getcrcpartialsignature(checktree->file->d_name);
-      if (crcsignature == NULL) return NULL;
+      if (crcsignature == NULL) {
+        errormsg ("cannot read file %s\n", checktree->file->d_name);
+        return NULL;
+      }
 
       checktree->file->crcpartial = (char*) malloc(strlen(crcsignature)+1);
       if (checktree->file->crcpartial == NULL) {
@@ -504,7 +523,10 @@ file_t **checkmatch(filetree_t **root, filetree_t *checktree, file_t *file)
 
     if (file->crcpartial == NULL) {
       crcsignature = getcrcpartialsignature(file->d_name);
-      if (crcsignature == NULL) return NULL;
+      if (crcsignature == NULL) {
+        errormsg ("cannot read file %s\n", file->d_name);
+        return NULL;
+      }
 
       file->crcpartial = (char*) malloc(strlen(crcsignature)+1);
       if (file->crcpartial == NULL) {
@@ -577,8 +599,8 @@ file_t **checkmatch(filetree_t **root, filetree_t *checktree, file_t *file)
 
 int confirmmatch(FILE *file1, FILE *file2)
 {
-  unsigned char c1 = 0;
-  unsigned char c2 = 0;
+  unsigned char c1[CHUNK_SIZE];
+  unsigned char c2[CHUNK_SIZE];
   size_t r1;
   size_t r2;
   
@@ -586,14 +608,13 @@ int confirmmatch(FILE *file1, FILE *file2)
   fseek(file2, 0, SEEK_SET);
 
   do {
-    r1 = fread(&c1, sizeof(c1), 1, file1);
-    r2 = fread(&c2, sizeof(c2), 1, file2);
+    r1 = fread(c1, 1, sizeof(c1), file1);
+    r2 = fread(c2, 1, sizeof(c2), file2);
 
-    if (c1 != c2) return 0; /* file contents are different */
-  } while (r1 && r2);
+    if (r1 != r2) return 0; /* file lengths are different */
+    if (memcmp (c1, c2, r1)) return 0; /* file contents are different */
+  } while (r2);
   
-  if (r1 != r2) return 0; /* file lengths are different */
-
   return 1;
 }
 
@@ -643,7 +664,7 @@ void printmatches(file_t *files)
   while (files != NULL) {
     if (files->hasdupes) {
       if (!ISFLAG(flags, F_OMITFIRST)) {
-	if (ISFLAG(flags, F_SHOWSIZE)) printf("%ld byte%seach:\n", files->size,
+	if (ISFLAG(flags, F_SHOWSIZE)) printf("%lld byte%seach:\n", files->size,
 	 (files->size != 1) ? "s " : " ");
 	if (ISFLAG(flags, F_DSAMELINE)) escapefilename("\\ ", &files->d_name);
 	printf("%s%c", files->d_name, ISFLAG(flags, F_DSAMELINE)?' ':'\n');
@@ -796,7 +817,7 @@ void deletefiles(file_t *files, int prompt)
       do {
 	printf("Set %d of %d, preserve files [1 - %d, all]", 
           curgroup, groups, counter);
-	if (ISFLAG(flags, F_SHOWSIZE)) printf(" (%ld byte%seach)", files->size,
+	if (ISFLAG(flags, F_SHOWSIZE)) printf(" (%lld byte%seach)", files->size,
 	  (files->size != 1) ? "s " : " ");
 	printf(": ");
 	fflush(stdout);
@@ -860,6 +881,88 @@ void deletefiles(file_t *files, int prompt)
   free(dupelist);
   free(preserve);
   free(preservestr);
+}
+
+void hardlinkfiles(file_t *files, int debug)
+{
+  int counter;
+  int groups = 0;
+  int curgroup = 0;
+  file_t *tmpfile;
+  file_t *curfile;
+  file_t **dupelist;
+  int max = 0;
+  int x = 0;
+
+  curfile = files;
+  
+  while (curfile) {
+    if (curfile->hasdupes) {
+      counter = 1;
+      groups++;
+
+      tmpfile = curfile->duplicates;
+      while (tmpfile) {
+	counter++;
+	tmpfile = tmpfile->duplicates;
+      }
+      
+      if (counter > max) max = counter;
+    }
+    
+    curfile = curfile->next;
+  }
+
+  max++;
+
+  dupelist = (file_t**) malloc(sizeof(file_t*) * max);
+
+  if (!dupelist) {
+    errormsg("out of memory\n");
+    exit(1);
+  }
+
+  while (files) {
+    if (files->hasdupes) {
+      curgroup++;
+      counter = 1;
+      dupelist[counter] = files;
+
+      if (debug) printf("[%d] %s\n", counter, files->d_name);
+
+      tmpfile = files->duplicates;
+
+      while (tmpfile) {
+	dupelist[++counter] = tmpfile;
+	if (debug) printf("[%d] %s\n", counter, tmpfile->d_name);
+	tmpfile = tmpfile->duplicates;
+      }
+
+      if (debug) printf("\n");
+
+      /* preserve only the first file */
+
+      printf("   [+] %s\n", dupelist[1]->d_name);
+      for (x = 2; x <= counter; x++) { 
+	  if (unlink(dupelist[x]->d_name) == 0) {
+            if ( link(dupelist[1]->d_name, dupelist[x]->d_name) == 0 ) {
+                printf("   [h] %s\n", dupelist[x]->d_name);
+            } else {
+                printf("-- unable to create a hardlink for the file: %s\n", strerror(errno));
+                printf("   [!] %s ", dupelist[x]->d_name);
+            }
+	  } else {
+	    printf("   [!] %s ", dupelist[x]->d_name);
+	    printf("-- unable to delete the file!\n");
+	  }
+	}
+      printf("\n");
+    }
+    
+    files = files->next;
+  }
+
+  free(dupelist);
 }
 
 int sort_pairs_by_arrival(file_t *f1, file_t *f2)
@@ -934,12 +1037,14 @@ void help_text()
   printf(" -r --recurse     \tfor every directory given follow subdirectories\n");
   printf("                  \tencountered within\n");
   printf(" -R --recurse:    \tfor each directory given after this option follow\n");
-  printf("                  \tsubdirectories encountered within\n");
+  printf("                  \tsubdirectories encountered within (note the ':' at\n");
+  printf("                  \tthe end of the option, manpage for more details)\n");
   printf(" -s --symlinks    \tfollow symlinks\n");
   printf(" -H --hardlinks   \tnormally, when two or more files point to the same\n");
   printf("                  \tdisk area they are treated as non-duplicates; this\n"); 
   printf("                  \toption will change this behavior\n");
   printf(" -n --noempty     \texclude zero-length files from consideration\n");
+  printf(" -A --nohidden    \texclude hidden files from consideration\n");
   printf(" -f --omitfirst   \tomit the first file in each set of matches\n");
   printf(" -1 --sameline    \tlist each set of matches on a single line\n");
   printf(" -S --size        \tshow size of duplicate files\n");
@@ -951,10 +1056,14 @@ void help_text()
   printf("                  \twith -s or --symlinks, or when specifying a\n");
   printf("                  \tparticular directory more than once; refer to the\n");
   printf("                  \tfdupes documentation for additional information\n");
-  //printf(" -l --relink      \t(description)\n");
+  /* printf(" -r --dlink     \t(description)\n"); */
+  printf(" -L --linkhard    \thardlink duplicate files to the first file in\n");
+  printf("                  \teach set of duplicates without prompting the user\n");
   printf(" -N --noprompt    \ttogether with --delete, preserve the first file in\n");
   printf("                  \teach set of duplicates and delete the rest without\n");
   printf("                  \twithout prompting the user\n");
+  printf(" -D --debug       \tenable debugging information\n");
+  printf("                  \teach set of duplicates without prompting the user\n");
   printf(" -v --version     \tdisplay fdupes version\n");
   printf(" -h --help        \tdisplay this help message\n\n");
 #ifdef OMIT_GETOPT_LONG
@@ -990,11 +1099,14 @@ int main(int argc, char **argv) {
     { "symlinks", 0, 0, 's' },
     { "hardlinks", 0, 0, 'H' },
     { "relink", 0, 0, 'l' },
+    { "linkhard", 0, 0, 'L' },
     { "noempty", 0, 0, 'n' },
+    { "nohidden", 0, 0, 'A' },
     { "delete", 0, 0, 'd' },
     { "version", 0, 0, 'v' },
     { "help", 0, 0, 'h' },
     { "noprompt", 0, 0, 'N' },
+    { "debug", 0, 0, 'D' },
     { "summarize", 0, 0, 'm'},
     { "summary", 0, 0, 'm' },
     { 0, 0, 0, 0 }
@@ -1008,7 +1120,7 @@ int main(int argc, char **argv) {
 
   oldargv = cloneargs(argc, argv);
 
-  while ((opt = GETOPT(argc, argv, "frRq1Ss::HlndvhNm"
+  while ((opt = GETOPT(argc, argv, "frRq1Ss::HlLnAdDvhNm"
 #ifndef OMIT_GETOPT_LONG
           , long_options, NULL
 #endif
@@ -1041,8 +1153,17 @@ int main(int argc, char **argv) {
     case 'n':
       SETFLAG(flags, F_EXCLUDEEMPTY);
       break;
+    case 'A':
+      SETFLAG(flags, F_EXCLUDEHIDDEN);
+      break;
     case 'd':
       SETFLAG(flags, F_DELETEFILES);
+      break;
+    case 'L':
+      SETFLAG(flags, F_HARDLINKFILES);
+      break;
+    case 'D':
+      SETFLAG(flags, F_DEBUGINFO);
       break;
     case 'v':
       printf("fdupes %s\n", VERSION);
@@ -1075,6 +1196,16 @@ int main(int argc, char **argv) {
 
   if (ISFLAG(flags, F_SUMMARIZEMATCHES) && ISFLAG(flags, F_DELETEFILES)) {
     errormsg("options --summarize and --delete are not compatible\n");
+    exit(1);
+  }
+
+  if (ISFLAG(flags, F_HARDLINKFILES) && ISFLAG(flags, F_DELETEFILES)) {
+    errormsg("options --linkhard and --delete are not compatible\n");
+    exit(1);
+  }
+
+  if (ISFLAG(flags, F_HARDLINKFILES) && ISFLAG(flags, F_CONSIDERHARDLINKS)) {
+    errormsg("options --linkhard and --hardlinks are not compatible\n");
     exit(1);
   }
 
@@ -1163,12 +1294,23 @@ int main(int argc, char **argv) {
 
   else 
 
-    if (ISFLAG(flags, F_SUMMARIZEMATCHES))
-      summarizematches(files);
-      
-    else
+    if (ISFLAG(flags, F_HARDLINKFILES))
 
-      printmatches(files);
+        if (ISFLAG(flags, F_DEBUGINFO))
+            hardlinkfiles(files, 1);
+        else
+            hardlinkfiles(files, 0);
+
+    else {
+    
+        if (ISFLAG(flags, F_SUMMARIZEMATCHES))
+            summarizematches(files);
+
+        else
+
+            printmatches(files);
+
+    }
 
   while (files) {
     curfile = files->next;

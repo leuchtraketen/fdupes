@@ -1,0 +1,228 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 50_bts284274_hardlinkreplace.dpatch by  <jfs@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Replace duplicate files with hardlinks
+
+@DPATCH@
+diff -urNad fdupes-1.50-PR2~/fdupes.1 fdupes-1.50-PR2/fdupes.1
+--- fdupes-1.50-PR2~/fdupes.1	2009-07-31 00:38:28.000000000 +0200
++++ fdupes-1.50-PR2/fdupes.1	2009-07-31 00:42:14.000000000 +0200
+@@ -58,10 +58,17 @@
+ .B CAVEATS
+ below)
+ .TP
++.B -L --hardlink
++replace all duplicate files with hardlinks to the
++first file in each set of duplicates
++.TP
+ .B -N --noprompt
+ when used together with \-\-delete, preserve the first file in each
+ set of duplicates and delete the others without prompting the user 
+ .TP
++.B -D --debug
++provide debugging information
++.TP
+ .B -v --version
+ display fdupes version
+ .TP
+diff -urNad fdupes-1.50-PR2~/fdupes.c fdupes-1.50-PR2/fdupes.c
+--- fdupes-1.50-PR2~/fdupes.c	2009-07-31 00:38:28.000000000 +0200
++++ fdupes-1.50-PR2/fdupes.c	2009-07-31 00:41:08.000000000 +0200
+@@ -53,6 +53,8 @@
+ #define F_NOPROMPT          0x0400
+ #define F_SUMMARIZEMATCHES  0x0800
+ #define F_EXCLUDEHIDDEN     0x1000
++#define F_HARDLINKFILES     0x2000
++#define F_DEBUGINFO         0x4000
+ 
+ char *program_name;
+ 
+@@ -881,6 +883,88 @@
+   free(preservestr);
+ }
+ 
++void hardlinkfiles(file_t *files, int debug)
++{
++  int counter;
++  int groups = 0;
++  int curgroup = 0;
++  file_t *tmpfile;
++  file_t *curfile;
++  file_t **dupelist;
++  int max = 0;
++  int x = 0;
++
++  curfile = files;
++  
++  while (curfile) {
++    if (curfile->hasdupes) {
++      counter = 1;
++      groups++;
++
++      tmpfile = curfile->duplicates;
++      while (tmpfile) {
++	counter++;
++	tmpfile = tmpfile->duplicates;
++      }
++      
++      if (counter > max) max = counter;
++    }
++    
++    curfile = curfile->next;
++  }
++
++  max++;
++
++  dupelist = (file_t**) malloc(sizeof(file_t*) * max);
++
++  if (!dupelist) {
++    errormsg("out of memory\n");
++    exit(1);
++  }
++
++  while (files) {
++    if (files->hasdupes) {
++      curgroup++;
++      counter = 1;
++      dupelist[counter] = files;
++
++      if (debug) printf("[%d] %s\n", counter, files->d_name);
++
++      tmpfile = files->duplicates;
++
++      while (tmpfile) {
++	dupelist[++counter] = tmpfile;
++	if (debug) printf("[%d] %s\n", counter, tmpfile->d_name);
++	tmpfile = tmpfile->duplicates;
++      }
++
++      if (debug) printf("\n");
++
++      /* preserve only the first file */
++
++      printf("   [+] %s\n", dupelist[1]->d_name);
++      for (x = 2; x <= counter; x++) { 
++	  if (unlink(dupelist[x]->d_name) == 0) {
++            if ( link(dupelist[1]->d_name, dupelist[x]->d_name) == 0 ) {
++                printf("   [h] %s\n", dupelist[x]->d_name);
++            } else {
++                printf("-- unable to create a hardlink for the file: %s\n", strerror(errno));
++                printf("   [!] %s ", dupelist[x]->d_name);
++            }
++	  } else {
++	    printf("   [!] %s ", dupelist[x]->d_name);
++	    printf("-- unable to delete the file!\n");
++	  }
++	}
++      printf("\n");
++    }
++    
++    files = files->next;
++  }
++
++  free(dupelist);
++}
++
+ int sort_pairs_by_arrival(file_t *f1, file_t *f2)
+ {
+   if (f2->duplicates != 0)
+@@ -971,10 +1055,14 @@
+   printf("                  \twith -s or --symlinks, or when specifying a\n");
+   printf("                  \tparticular directory more than once; refer to the\n");
+   printf("                  \tfdupes documentation for additional information\n");
+-  //printf(" -l --relink      \t(description)\n");
++  /* printf(" -r --dlink     \t(description)\n"); */
++  printf(" -L --linkhard    \thardlink duplicate files to the first file in\n");
++  printf("                  \teach set of duplicates without prompting the user\n");
+   printf(" -N --noprompt    \ttogether with --delete, preserve the first file in\n");
+   printf("                  \teach set of duplicates and delete the rest without\n");
+   printf("                  \twithout prompting the user\n");
++  printf(" -D --debug       \tenable debugging information\n");
++  printf("                  \teach set of duplicates without prompting the user\n");
+   printf(" -v --version     \tdisplay fdupes version\n");
+   printf(" -h --help        \tdisplay this help message\n\n");
+ #ifdef OMIT_GETOPT_LONG
+@@ -1010,12 +1098,14 @@
+     { "symlinks", 0, 0, 's' },
+     { "hardlinks", 0, 0, 'H' },
+     { "relink", 0, 0, 'l' },
++    { "linkhard", 0, 0, 'L' },
+     { "noempty", 0, 0, 'n' },
+     { "nohidden", 0, 0, 'A' },
+     { "delete", 0, 0, 'd' },
+     { "version", 0, 0, 'v' },
+     { "help", 0, 0, 'h' },
+     { "noprompt", 0, 0, 'N' },
++    { "debug", 0, 0, 'D' },
+     { "summarize", 0, 0, 'm'},
+     { "summary", 0, 0, 'm' },
+     { 0, 0, 0, 0 }
+@@ -1029,7 +1119,7 @@
+ 
+   oldargv = cloneargs(argc, argv);
+ 
+-  while ((opt = GETOPT(argc, argv, "frRq1Ss::HlnAdvhNm"
++  while ((opt = GETOPT(argc, argv, "frRq1Ss::HlLnAdDvhNm"
+ #ifndef OMIT_GETOPT_LONG
+           , long_options, NULL
+ #endif
+@@ -1068,6 +1158,12 @@
+     case 'd':
+       SETFLAG(flags, F_DELETEFILES);
+       break;
++    case 'L':
++      SETFLAG(flags, F_HARDLINKFILES);
++      break;
++    case 'D':
++      SETFLAG(flags, F_DEBUGINFO);
++      break;
+     case 'v':
+       printf("fdupes %s\n", VERSION);
+       exit(0);
+@@ -1102,6 +1198,16 @@
+     exit(1);
+   }
+ 
++  if (ISFLAG(flags, F_HARDLINKFILES) && ISFLAG(flags, F_DELETEFILES)) {
++    errormsg("options --linkhard and --delete are not compatible\n");
++    exit(1);
++  }
++
++  if (ISFLAG(flags, F_HARDLINKFILES) && ISFLAG(flags, F_CONSIDERHARDLINKS)) {
++    errormsg("options --linkhard and --hardlinks are not compatible\n");
++    exit(1);
++  }
++
+   if (ISFLAG(flags, F_RECURSEAFTER)) {
+     firstrecurse = nonoptafter("--recurse:", argc, oldargv, argv, optind);
+     
+@@ -1187,12 +1293,23 @@
+ 
+   else 
+ 
+-    if (ISFLAG(flags, F_SUMMARIZEMATCHES))
+-      summarizematches(files);
+-      
+-    else
++    if (ISFLAG(flags, F_HARDLINKFILES))
+ 
+-      printmatches(files);
++        if (ISFLAG(flags, F_DEBUGINFO))
++            hardlinkfiles(files, 1);
++        else
++            hardlinkfiles(files, 0);
++
++    else {
++    
++        if (ISFLAG(flags, F_SUMMARIZEMATCHES))
++            summarizematches(files);
++
++        else
++
++            printmatches(files);
++
++    }
+ 
+   while (files) {
+     curfile = files->next;

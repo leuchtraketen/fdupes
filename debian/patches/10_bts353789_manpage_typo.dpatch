@@ -1,0 +1,19 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 10_bts353789_manpage_typo.dpatch by A Costa <agcosta@gis.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Fix a typo in the manpage
+
+@DPATCH@
+diff -urNad fdupes~/fdupes.1 fdupes/fdupes.1
+--- fdupes~/fdupes.1	2008-03-17 20:12:35.000000000 +0100
++++ fdupes/fdupes.1	2008-03-18 07:33:03.652581590 +0100
+@@ -84,7 +84,7 @@
+ .B fdupes: error invoking md5sum
+ it means the program has been compiled to use an external
+ program to calculate MD5 signatures (otherwise, fdupes uses
+-interal routines for this purpose), and an error has occurred
++internal routines for this purpose), and an error has occurred
+ while attempting to execute it. If this is the case, the 
+ specified program should be properly installed prior 
+ to running fdupes.

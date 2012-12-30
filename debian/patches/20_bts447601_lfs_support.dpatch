@@ -1,0 +1,40 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 20_bts447601_lfs_support.dpatch by Andrew Vaughan <ajv-lists@netspace.net.au>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: LFS support for file with size > 2GB
+
+@DPATCH@
+diff -urNad fdupes~/Makefile fdupes/Makefile
+--- fdupes~/Makefile	2008-03-17 20:12:35.000000000 +0100
++++ fdupes/Makefile	2008-03-18 07:34:44.070304071 +0100
+@@ -74,7 +74,7 @@
+ CC = gcc
+ COMPILER_OPTIONS = -Wall -O -g
+ 
+-CFLAGS= $(COMPILER_OPTIONS) -I. -DVERSION=\"$(VERSION)\" $(EXTERNAL_MD5) $(EXPERIMENTAL_RBTREE) $(OMIT_GETOPT_LONG)
++CFLAGS= $(COMPILER_OPTIONS) -I. -D_FILE_OFFSET_BITS=64 -DVERSION=\"$(VERSION)\" $(EXTERNAL_MD5) $(EXPERIMENTAL_RBTREE) $(OMIT_GETOPT_LONG)
+ 
+ INSTALL_PROGRAM = $(INSTALL) -c -m 0755
+ INSTALL_DATA    = $(INSTALL) -c -m 0644
+diff -urNad fdupes~/fdupes.c fdupes/fdupes.c
+--- fdupes~/fdupes.c	2008-03-18 07:33:54.975506314 +0100
++++ fdupes/fdupes.c	2008-03-18 07:33:55.055510875 +0100
+@@ -648,7 +648,7 @@
+   while (files != NULL) {
+     if (files->hasdupes) {
+       if (!ISFLAG(flags, F_OMITFIRST)) {
+-	if (ISFLAG(flags, F_SHOWSIZE)) printf("%ld byte%seach:\n", files->size,
++	if (ISFLAG(flags, F_SHOWSIZE)) printf("%lld byte%seach:\n", files->size,
+ 	 (files->size != 1) ? "s " : " ");
+ 	if (ISFLAG(flags, F_DSAMELINE)) escapefilename("\\ ", &files->d_name);
+ 	printf("%s%c", files->d_name, ISFLAG(flags, F_DSAMELINE)?' ':'\n');
+@@ -801,7 +801,7 @@
+       do {
+ 	printf("Set %d of %d, preserve files [1 - %d, all]", 
+           curgroup, groups, counter);
+-	if (ISFLAG(flags, F_SHOWSIZE)) printf(" (%ld byte%seach)", files->size,
++	if (ISFLAG(flags, F_SHOWSIZE)) printf(" (%lld byte%seach)", files->size,
+ 	  (files->size != 1) ? "s " : " ");
+ 	printf(": ");
+ 	fflush(stdout);

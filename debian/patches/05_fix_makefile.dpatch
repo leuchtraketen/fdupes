@@ -1,0 +1,20 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 05_fix_makefile.dpatch by Sandro Tosi <matrixhasu@gmail.com>
+##
+## DP: Added to let this makefile work
+
+@DPATCH@
+diff -urNad fdupes~/Makefile fdupes/Makefile
+--- fdupes~/Makefile	2008-03-17 20:12:35.000000000 +0100
++++ fdupes/Makefile	2008-03-18 23:13:20.935619328 +0100
+@@ -97,8 +97,8 @@
+ 	$(CC) $(CFLAGS) -o fdupes $(OBJECT_FILES)
+ 
+ installdirs:
+-	test -d $(BIN_DIR) || -$(MKDIR) $(BIN_DIR)
+-	test -d $(MAN_DIR) || -$(MKDIR) $(MAN_DIR)
++	test -d $(BIN_DIR) || $(MKDIR) $(BIN_DIR)
++	test -d $(MAN_DIR) || $(MKDIR) $(MAN_DIR)
+ 
+ install: fdupes installdirs
+ 	$(INSTALL_PROGRAM)	fdupes   $(BIN_DIR)/$(PROGRAM_NAME)

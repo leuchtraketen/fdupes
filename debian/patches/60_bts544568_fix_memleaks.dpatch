@@ -1,0 +1,29 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 60_bts544568_fix_memleaks.dpatch by jbdenis <jeanbaptiste.denis@gmail.com>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Fix memory leaks in main()
+
+@DPATCH@
+diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' fdupes~/fdupes.c fdupes/fdupes.c
+--- fdupes~/fdupes.c	2010-05-28 21:00:51.860398169 +0200
++++ fdupes/fdupes.c	2010-05-28 21:00:51.964399081 +0200
+@@ -1314,10 +1314,17 @@
+   while (files) {
+     curfile = files->next;
+     free(files->d_name);
++    free(files->crcsignature);
++    free(files->crcpartial);
+     free(files);
+     files = curfile;
+   }
+-  
++
++  for (x = 0; x < argc; x++)
++    free(oldargv[x]);
++
++  free(oldargv);
++
+   purgetree(checktree);
+ 
+   return 0;
