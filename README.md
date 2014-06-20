@@ -72,6 +72,10 @@ once. All files within that directory will be listed as their own
 duplicates, leading to data loss should a user preserve a file 
 without its "duplicate" (the file itself!).
 
+-M specifies minimum size of files to consider in bytes. Files smaller
+than this will be disregarded from duplicate list despite if there is
+or isn't any duplicates. Useful for finding large duplicate files.
+
 Legal Information
 =================
 
