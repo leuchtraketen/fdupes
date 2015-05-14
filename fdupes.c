@@ -55,6 +55,7 @@
 #define F_EXCLUDEHIDDEN     0x1000
 #define F_HARDLINKFILES     0x2000
 #define F_DEBUGINFO         0x4000
+#define F_MINIMUMSIZE       0x8000
 
 char *program_name;
 
@@ -83,6 +84,8 @@ typedef struct _signatures
 } signatures_t;
 
 */
+
+unsigned long int minimum_size = 0;
 
 typedef struct _file {
   char *d_name;
@@ -320,18 +323,23 @@ int grokdir(char *dir, file_t **filelistp)
       }
 
       if (S_ISDIR(info.st_mode)) {
-	if (ISFLAG(flags, F_RECURSE) && (ISFLAG(flags, F_FOLLOWLINKS) || !S_ISLNK(linfo.st_mode)))
-	  filecount += grokdir(newfile->d_name, filelistp);
-	free(newfile->d_name);
-	free(newfile);
+        if (ISFLAG(flags, F_RECURSE) && (ISFLAG(flags, F_FOLLOWLINKS) || !S_ISLNK(linfo.st_mode)))
+          filecount += grokdir(newfile->d_name, filelistp);
+        free(newfile->d_name);
+        free(newfile);
       } else {
-	if (S_ISREG(linfo.st_mode) || (S_ISLNK(linfo.st_mode) && ISFLAG(flags, F_FOLLOWLINKS))) {
-	  *filelistp = newfile;
-	  filecount++;
-	} else {
-	  free(newfile->d_name);
-	  free(newfile);
-	}
+        if (ISFLAG(flags, F_MINIMUMSIZE)) {
+          if (linfo.st_size < minimum_size) {
+            continue;
+          }
+        }
+        if (S_ISREG(linfo.st_mode) || (S_ISLNK(linfo.st_mode) && ISFLAG(flags, F_FOLLOWLINKS))) {
+          *filelistp = newfile;
+          filecount++;
+        } else {
+          free(newfile->d_name);
+          free(newfile);
+        }
       }
     }
   }
@@ -1047,6 +1055,7 @@ void help_text()
   printf(" -A --nohidden    \texclude hidden files from consideration\n");
   printf(" -f --omitfirst   \tomit the first file in each set of matches\n");
   printf(" -1 --sameline    \tlist each set of matches on a single line\n");
+  printf(" -M --minimum     \tminimum size of files to consider\n");
   printf(" -S --size        \tshow size of duplicate files\n");
   printf(" -m --summarize   \tsummarize dupe information\n");
   printf(" -q --quiet       \thide progress indicator\n");
@@ -1095,6 +1104,7 @@ int main(int argc, char **argv) {
     { "recursive:", 0, 0, 'R' },
     { "quiet", 0, 0, 'q' },
     { "sameline", 0, 0, '1' },
+    { "minimum", 0, 0, 'M' },
     { "size", 0, 0, 'S' },
     { "symlinks", 0, 0, 's' },
     { "hardlinks", 0, 0, 'H' },
@@ -1120,7 +1130,7 @@ int main(int argc, char **argv) {
 
   oldargv = cloneargs(argc, argv);
 
-  while ((opt = GETOPT(argc, argv, "frRq1Ss::HlLnAdDvhNm"
+  while ((opt = GETOPT(argc, argv, "frRq1M:Ss::HlLnAdDvhNm"
 #ifndef OMIT_GETOPT_LONG
           , long_options, NULL
 #endif
@@ -1140,6 +1150,10 @@ int main(int argc, char **argv) {
       break;
     case '1':
       SETFLAG(flags, F_DSAMELINE);
+      break;
+    case 'M':
+      SETFLAG(flags, F_MINIMUMSIZE);
+      minimum_size = atoll(optarg);
       break;
     case 'S':
       SETFLAG(flags, F_SHOWSIZE);
