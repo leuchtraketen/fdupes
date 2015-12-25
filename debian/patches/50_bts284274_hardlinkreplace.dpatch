@@ -139,8 +139,7 @@ diff -urNad fdupes-1.50-PR2~/fdupes.c fdupes-1.50-PR2/fdupes.c
    printf("                  \teach set of duplicates and delete the rest without\n");
    printf("                  \twithout prompting the user\n");
 +  printf(" -D --debug       \tenable debugging information\n");
-+  printf("                  \teach set of duplicates without prompting the user\n");
-   printf(" -v --version     \tdisplay fdupes version\n");
++  printf(" -v --version     \tdisplay fdupes version\n");
    printf(" -h --help        \tdisplay this help message\n\n");
  #ifdef OMIT_GETOPT_LONG
 @@ -1010,12 +1098,14 @@
