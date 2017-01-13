@@ -6,18 +6,18 @@ fdupes is a program for identifying duplicate files residing within specified di
 This modified version of fdupes includes a patch from:
 
 http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=284274
-
+````
    * debian/patches/50_bts284274_hardlinkreplace.dpatch
      - added -L / --linkhard to make fdupes replace files with hardlinks. Also
        update the manual page; thanks to Rupert Levene for the report and to
        Javier Fernández-Sanguino Peña for the patch; Closes: #284274
 
    * -M parameter for searching with minimum size by Hesse Hämäläinen
-
+````
 
 Usage
 =====
-
+````
 Usage: fdupes [options] DIRECTORY...
 
  -r --recurse           for every directory given follow subdirectories
@@ -52,7 +52,7 @@ Usage: fdupes [options] DIRECTORY...
                         each set of duplicates without prompting the user
  -v --version           display fdupes version
  -h --help              display this help message
-
+````
 Unless -1 or --sameline is specified, duplicate files are listed 
 together in groups, each file displayed on a separate line. The
 groups are then separated from each other by blank lines.
